@@ -1,0 +1,37 @@
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = "c506b11b94163381b5439b5fa217867a"
+name = "create-order"
+handle = "create-order-4"
+application_url = "https://designing-lo-viewer-criminal.trycloudflare.com"
+embedded = true
+
+[build]
+automatically_update_urls_on_dev = true
+dev_store_url = "development-store-anncode.myshopify.com"
+include_config_on_deploy = true
+
+[access_scopes]
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = "read_customers,read_orders,read_products,write_orders"
+
+[auth]
+redirect_urls = [
+  "https://designing-lo-viewer-criminal.trycloudflare.com/auth/callback",
+  "https://designing-lo-viewer-criminal.trycloudflare.com/auth/shopify/callback",
+  "https://designing-lo-viewer-criminal.trycloudflare.com/api/auth/callback"
+]
+
+[webhooks]
+api_version = "2025-01"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/scopes_update" ]
+  uri = "/webhooks/app/scopes_update"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/uninstalled" ]
+  uri = "/webhooks/app/uninstalled"
+
+[pos]
+embedded = false
