@@ -17,9 +17,9 @@ scopes = "read_customers,read_orders,read_products,write_orders"
 
 [auth]
 redirect_urls = [
-  "https://designing-lo-viewer-criminal.trycloudflare.com/auth/callback",
-  "https://designing-lo-viewer-criminal.trycloudflare.com/auth/shopify/callback",
-  "https://designing-lo-viewer-criminal.trycloudflare.com/api/auth/callback"
+  "https://create-shopify-order.onrender.com/auth/callback",
+  "https://create-shopify-order.onrender.com/auth/shopify/callback",
+  "https://create-shopify-order.onrender.com/api/auth/callback"
 ]
 
 [webhooks]
