@@ -31,7 +31,7 @@ export const loader = async ({ request }) => {
     const customerQuery = `query { customers(first: 10) { nodes { id } } }`;
     const productsQuery = `
         query {
-          products(first: 10 query: "15") {
+          products(first: 50) {
             nodes {
               id
               title
