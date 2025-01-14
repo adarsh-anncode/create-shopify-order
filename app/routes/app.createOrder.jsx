@@ -36,7 +36,8 @@ export const loader = async ({ request }) => {
               id
               title
               handle
-              variants(first: 100) { nodes { id } }
+              vendor
+              variants(first: 100) { nodes { id title sku } }
             }
           }
         }
@@ -89,6 +90,9 @@ const generateRandomOrders = async (admin, customerData, productsData) => {
             lineItems: [
               {
                 productId: randomProduct.id,
+                variantId: randomProduct.variants.nodes[0].id,
+                sku: randomProduct.variants.nodes[0].sku,
+                vendor: randomProduct?.vendor,
                 quantity: randomQuantity,
                 priceSet: {
                   shopMoney: { amount: "119.24", currencyCode: "EUR" },
@@ -96,6 +100,9 @@ const generateRandomOrders = async (admin, customerData, productsData) => {
               },
               {
                 productId: randomProducts.id,
+                variantId: randomProducts.variants.nodes[0].id,
+                sku: randomProducts.variants.nodes[0].sku,
+                vendor: randomProducts?.vendor,
                 quantity: randomQuantity,
                 priceSet: {
                   shopMoney: { amount: "119.24", currencyCode: "EUR" },
