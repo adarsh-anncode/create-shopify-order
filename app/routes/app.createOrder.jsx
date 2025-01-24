@@ -28,10 +28,10 @@ export const loader = async ({ request }) => {
   };
 
   try {
-    const customerQuery = `query { customers(first: 10) { nodes { id } } }`;
+    const customerQuery = `query { customers(first: 20) { nodes { id } } }`;
     const productsQuery = `
         query {
-          products(first: 50) {
+          products(first: 50, query: "3/4") {
             nodes {
               id
               title
@@ -124,86 +124,25 @@ const generateRandomOrders = async (admin, customerData, productsData) => {
         },
       },
     );
-    return response.json();
+    const { data, extensions } = await response.json();
+    console.log("data: ", data?.orderCreate?.userErrors);
+    // Check for order creation success
+    if (!data?.orderCreate?.order) {
+      console.warn("Order creation failed. Retrying after delay...");
+      await delay(10000); // Wait 10 seconds before retrying
+      return generateRandomOrders(admin, customerData, productsData); // Retry
+    }
+    return { data, extensions };
   } catch (error) {
-    if (error) {
+    if (false) {
       console.warn("Rate limit hit. Retrying after delay...");
-      await delay(60000); // Wait 1 minute before retrying
+      await delay(60000); // Wait 1 minutes before retrying
       return generateRandomOrders(admin, customerData, productsData); // Retry
     }
     console.error("Order creation error:", error);
-    return null;
+    return error;
   }
 };
-// export const action = async ({ request }) => {
-//     const { admin } = await authenticate.admin(request);
-//     const formData = new URLSearchParams(await request.formData());
-//     const data = JSON.parse(formData.get("data"));
-//     const { loaderData, orderCount } = data;
-
-//     if (!orderCount || orderCount <= 0) return [];
-
-//     const responseJson = [];
-
-//     // Create a delay function that returns a promise
-//     const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-//     // Loop through the order count and create orders with delay
-//     for (let i = 0; i < orderCount; i++) {
-//       // Delay by 30 seconds for each iteration
-//       await delay(i * 200); // Delay increases by 30 seconds per iteration
-
-//       const orderResponse = await generateRandomOrders(
-//         admin,
-//         loaderData.customerData,
-//         loaderData.productsData
-//       );
-
-//       if (orderResponse) {
-//         console.log("Order Response", orderResponse?.data);
-//         responseJson.push(orderResponse?.data);
-//       }
-//     }
-
-//     return responseJson;
-//   };
-
-// Main component for rendering order creation UI
-
-// export const action = async ({ request }) => {
-//   console.log("order creation");
-//   const { admin } = await authenticate.admin(request);
-//   const formData = new URLSearchParams(await request.formData());
-//   const data = JSON.parse(formData.get("data"));
-//   const { loaderData, orderCount } = data;
-
-//   if (!orderCount || orderCount <= 0) return [];
-
-//   const responseJson = [];
-
-//   // Create a delay function that returns a promise
-//   const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-//   // Loop through the order count and create orders with delay
-//   for (let i = 0; i < orderCount; i++) {
-//     // Delay by 30 seconds for each iteration
-//     await delay(8000); // Delay increases by 30 seconds per iteration
-
-//     const orderResponse = await generateRandomOrders(
-//       admin,
-//       loaderData.customerData,
-//       loaderData.productsData,
-//     );
-
-//     if (orderResponse) {
-//       console.log("Order Response", orderResponse?.data);
-//       responseJson.push(orderResponse?.data);
-//     }
-//   }
-
-//   return responseJson;
-// };
-
 export const action = async ({ request }) => {
   console.log("Order creation started");
   const { admin } = await authenticate.admin(request);
@@ -214,8 +153,8 @@ export const action = async ({ request }) => {
   if (!orderCount || orderCount <= 0) return [];
 
   const responseJson = [];
-  const BATCH_SIZE = 5; // Number of orders to process in a single batch
-  const DELAY_MS = 10000; // Delay of 10 seconds between batches
+  const BATCH_SIZE = 1; // Number of orders to process in a single batch
+  const DELAY_MS = 1000; // Delay of 1 seconds between batches
 
   // Create a delay function
   const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -241,6 +180,7 @@ export const action = async ({ request }) => {
 
     // Await completion of the current batch
     const batchResults = await Promise.all(promises);
+    console.log("batchResults: ", batchResults);
     responseJson.push(...batchResults);
 
     console.log(`Batch ${i + 1}/${chunks} completed.`);
