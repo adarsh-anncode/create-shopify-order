@@ -18,214 +18,204 @@ import {
 import { useState, useEffect } from "react";
 import { authenticate } from "../shopify.server";
 
-// Loader to fetch customer and product data from Shopify
+// Fetch data for customers and products from Shopify
 export const loader = async ({ request }) => {
   const { admin } = await authenticate.admin(request);
 
-  // Fetch customer data
-  const customerResponse = await admin.graphql(`
-    query {
-      customers(first: 10) {
-        nodes {
-          id
-        }
-      }
-    }
-  `);
+  const fetchData = async (query) => {
+    const response = await admin.graphql(query);
+    return response.json();
+  };
 
-  // Fetch product data
-  const productsResponse = await admin.graphql(`
-    query {
-      products(first: 10) {
+  try {
+    const customerQuery = `query { customers(first: 20) { nodes { id } } }`;
+    const productsQuery = `
+      query {
+        products(first: 50, query: "3/4") {
           nodes {
             id
             title
             handle
-            variants(first: 100) {
-            nodes {
-                id
-            }
+            vendor
+            variants(first: 100) { nodes { id title sku } }
           }
         }
       }
-    }
-  `);
+    `;
+    const [customerData, productsData] = await Promise.all([
+      fetchData(customerQuery),
+      fetchData(productsQuery),
+    ]);
 
-  // Parse and return data to be used by the component
-  const customerData = await customerResponse.json();
-  const productsData = await productsResponse.json();
-
-  return {
-    customerData: customerData?.data?.customers?.nodes || [],
-    productsData: productsData?.data?.products?.nodes || [],
-  };
+    return {
+      customerData: customerData?.data?.customers?.nodes || [],
+      productsData: productsData?.data?.products?.nodes || [],
+    };
+  } catch (error) {
+    console.error("Data fetching error:", error);
+    return { customerData: [], productsData: [] };
+  }
 };
 
-// Action to create orders based on form input
-export const action = async ({ request }) => {
-  const { admin } = await authenticate.admin(request);
-  const formData = await request.formData();
-  const dataString = formData.get("data");
-  const data = JSON.parse(dataString);
-  let responseJson = [];
-  function randomNumberGenerator(max = 10) {
-    return Math.floor(Math.random() * max);
+// Generate bulk order creation payload
+const generateBulkPayload = (customerData, productsData, orderCount) => {
+  const randomIndex = (max) => Math.floor(Math.random() * max);
+
+  const orders = [];
+  for (let i = 0; i < orderCount; i++) {
+    const randomCustomer = customerData[randomIndex(customerData.length)];
+    const randomProduct1 = productsData[randomIndex(productsData.length)];
+    const randomProduct2 = productsData[randomIndex(productsData.length)];
+    const randomQuantity1 = randomIndex(10) + 1;
+    const randomQuantity2 = randomIndex(10) + 1;
+
+    orders.push({
+      currency: "EUR",
+      lineItems: [
+        {
+          productId: randomProduct1.id,
+          variantId: randomProduct1.variants.nodes[0].id,
+          sku: randomProduct1.variants.nodes[0].sku,
+          vendor: randomProduct1.vendor,
+          quantity: randomQuantity1,
+        },
+        {
+          productId: randomProduct2.id,
+          variantId: randomProduct2.variants.nodes[0].id,
+          sku: randomProduct2.variants.nodes[0].sku,
+          vendor: randomProduct2.vendor,
+          quantity: randomQuantity2,
+        },
+      ],
+      customer: {
+        toAssociate: { id: randomCustomer.id },
+      },
+      financialStatus: "PAID",
+      transactions: [
+        {
+          kind: "SALE",
+          status: "SUCCESS",
+          amountSet: {
+            shopMoney: { amount: "238.47", currencyCode: "EUR" },
+          },
+        },
+      ],
+    });
   }
+  return orders;
+};
 
-  async function generateRandomOrders(customerData, productsData) {
-    const randomCustomer = customerData[randomNumberGenerator()];
-    const randomProduct = productsData[randomNumberGenerator()];
-    const randomQuantity = randomNumberGenerator(10) + 1;
+// Action handler for bulk order creation
+export const action = async ({ request }) => {
+  console.log("Bulk order creation started");
+  const { admin } = await authenticate.admin(request);
+  const formData = new URLSearchParams(await request.formData());
+  const data = JSON.parse(formData.get("data"));
+  const { loaderData, orderCount } = data;
 
-    // Create order payload
+  if (!orderCount || orderCount <= 0) return [];
 
-    const response = await admin.graphql(
-      `#graphql
-        mutation OrderCreate($order: OrderCreateOrderInput!, $options: OrderCreateOptionsInput) {
-          orderCreate(order: $order, options: $options) {
-            userErrors {
-              field
-              message
-            }
-            order {
-              id
-              lineItems(first: 5) {
-                nodes {
-                  product {
-                    id
-                  }
-                  quantity
-                }
-              }
-              customer {
-                id
-              }
-              transactions {
-                kind
-                status
-                amountSet {
-                  shopMoney {
-                    amount
-                    currencyCode
-                  }
-                }
+  const bulkOrders = generateBulkPayload(
+    loaderData.customerData,
+    loaderData.productsData,
+    orderCount
+  );
+  try {
+    const response = await admin.graphql(`
+      mutation BulkOperationRunMutation($orders: [OrderCreateInput!]!) {
+        bulkOperationRunMutation(
+          mutation: """
+          mutation CreateOrders($orders: [OrderCreateInput!]!) {
+            ordersCreate(orders: $orders) {
+              userErrors {
+                field
+                message
               }
             }
           }
-        }`,
-      {
-        variables: {
-          order: {
-            currency: "EUR",
-            lineItems: [
-              {
-                productId: randomProduct.id,
-                quantity: randomQuantity,
-                priceSet: {
-                  shopMoney: {
-                    amount: "119.24",
-                    currencyCode: "EUR",
-                  },
-                },
-              },
-            ],
-            customer: {
-              toAssociate: {
-                id: randomCustomer.id,
-              },
-            },
-            financialStatus: "PAID",
-            transactions: [
-              {
-                kind: "SALE",
-                status: "SUCCESS",
-                amountSet: {
-                  shopMoney: {
-                    amount: "238.47",
-                    currencyCode: "EUR",
-                  },
-                },
-              },
-            ],
-          },
-        },
-      },
-    );
-    return await response.json();
-  }
-  switch (data.call_key) {
-    case "create-order":
-      // Create orders
-      const { loaderData, orderCount } = data;
-      const { customerData, productsData } = loaderData;
-      // logics to generate random products/customers/quantity
-      for (let i = 0; i < orderCount; i++) {
-        setTimeout(async () => {
-          const orderResponse = await generateRandomOrders(
-            customerData,
-            productsData,
-          );
-          console.log("Order Response", orderResponse?.data);
-          responseJson.push("Order Response", orderResponse?.data);
-        }, 30000);
+          """,
+          input: $orders
+        ) {
+          bulkOperation {
+            id
+            status
+          }
+          userErrors {
+            field
+            message
+          }
+        }
       }
+    `, {
+      variables: {
+        orders: bulkOrders, // Ensure `bulkOrders` matches Shopify's `OrderCreateInput` schema
+      },
+    });
+    
+    
 
-      break;
-    default:
-      break;
+    const { data } = await response.json();
+    console.log("Bulk operation response:", data);
+
+    if (data?.bulkOperationRunMutation?.bulkOperation?.status === "CREATED") {
+      console.log("Bulk order creation initiated successfully.");
+      return { success: true, bulkOperationId: data.bulkOperationRunMutation.bulkOperation.id };
+    } else {
+      console.warn("Bulk order creation failed.");
+      return { success: false, errors: data?.bulkOperationRunMutation?.userErrors || [] };
+    }
+  } catch (error) {
+    console.error("Bulk order creation error:", error?.GraphqlQueryError);
+    return { success: false, error };
   }
-  return responseJson;
 };
 
-// Main component to render the order creation form
+// UI component for rendering the bulk order creation form
 export default function OrderCreator() {
-  const loaderData = useLoaderData(); // Load data for customers and products
-  const actionData = useActionData(); // Action data after form submission
   const navigation = useNavigation();
-  const submit = useSubmit(); // Handle form submission
-  const [orderCount, setOrderCount] = useState(""); // Track input value for order count
+  const loaderData = useLoaderData();
+  const actionData = useActionData();
+  const submit = useSubmit();
+  const [orderCount, setOrderCount] = useState("");
 
-  // Log loader and action data for debugging
-  useEffect(() => {
-    if (actionData) {
-      console.log("Action Data:", actionData); // Log the action response
-    }
-  }, [actionData]);
-
-  // Handle form submission
   const handleFormSubmit = () => {
     const postData = new FormData();
     const data = JSON.stringify({
-      call_key: "create-order",
+      call_key: "bulk-create-order",
       loaderData: loaderData,
-      orderCount: orderCount, // Get order count from state
+      orderCount: orderCount,
     });
     postData.append("data", data);
     submit(postData, { method: "post" });
-    return;
   };
 
+  useEffect(() => {
+    if (actionData) {
+      console.log("Action Data:", actionData);
+    }
+  }, [actionData]);
+
   return (
-    <Page title="Order Creator">
+    <Page title="Bulk Order Creator Page">
       <BlockStack>
         <Card>
           {!(navigation.state === "loading") ? (
             <Box padding={400}>
-              <TitleBar title="Order Creator" />
-              <Text variant="headingMd">Generate a number of orders.</Text>
+              <TitleBar title="Bulk Order Creator" />
+              <Text variant="headingMd">Generate multiple orders efficiently.</Text>
 
               <InlineStack gap={400}>
                 <TextField
                   placeholder="Enter the number of orders to generate"
                   value={orderCount}
-                  onChange={(value) => setOrderCount(value)} // Update state on input change
-                  name="orderCount" // Set form field name for submission
+                  onChange={(value) => setOrderCount(value)}
+                  name="orderCount"
                 />
-                <Button onClick={handleFormSubmit}>Generate Button</Button>
+                <Button onClick={handleFormSubmit}>Generate Orders</Button>
               </InlineStack>
             </Box>
           ) : (
-            <Card>Loading....</Card>
+            <Card>Loading...</Card>
           )}
         </Card>
       </BlockStack>

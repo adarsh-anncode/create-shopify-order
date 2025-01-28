@@ -3,7 +3,7 @@
 client_id = "c506b11b94163381b5439b5fa217867a"
 name = "create-order"
 handle = "create-order-4"
-application_url = "https://designing-lo-viewer-criminal.trycloudflare.com"
+application_url = "https://character-dim-throwing-loop.trycloudflare.com"
 embedded = true
 
 [build]
@@ -17,9 +17,9 @@ scopes = "read_customers,read_orders,read_products,write_orders"
 
 [auth]
 redirect_urls = [
-  "https://create-shopify-order.onrender.com/auth/callback",
-  "https://create-shopify-order.onrender.com/auth/shopify/callback",
-  "https://create-shopify-order.onrender.com/api/auth/callback"
+  "https://character-dim-throwing-loop.trycloudflare.com/auth/callback",
+  "https://character-dim-throwing-loop.trycloudflare.com/auth/shopify/callback",
+  "https://character-dim-throwing-loop.trycloudflare.com/api/auth/callback"
 ]
 
 [webhooks]
@@ -27,11 +27,11 @@ api_version = "2025-01"
 
   [[webhooks.subscriptions]]
   topics = [ "app/scopes_update" ]
-  uri = "/webhooks/app/scopes_update"
+  uri = "https://author-interviews-dramatically-passage.trycloudflare.com/webhooks/app/scopes_update"
 
   [[webhooks.subscriptions]]
   topics = [ "app/uninstalled" ]
-  uri = "/webhooks/app/uninstalled"
+  uri = "https://author-interviews-dramatically-passage.trycloudflare.com/webhooks/app/uninstalled"
 
 [pos]
 embedded = false
