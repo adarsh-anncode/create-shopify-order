@@ -31,7 +31,7 @@ export const loader = async ({ request }) => {
     const customerQuery = `query { customers(first: 20) { nodes { id } } }`;
     const productsQuery = `
         query {
-          products(first: 50, query: "3/4") {
+          products(first: 50) {
             nodes {
               id
               title
@@ -61,9 +61,24 @@ export const loader = async ({ request }) => {
 const generateRandomOrders = async (admin, customerData, productsData) => {
   const randomIndex = (max) => Math.floor(Math.random() * max);
   const randomCustomer = customerData[randomIndex(customerData.length)];
-  const randomProduct = productsData[randomIndex(productsData.length)];
-  const randomProducts = productsData[randomIndex(productsData.length)];
   const randomQuantity = randomIndex(10) + 1;
+
+  // Create 18 random lineItems
+  const lineItems = Array.from({ length: 18 }, () => {
+    const randomProduct = productsData[randomIndex(productsData.length)];
+    return {
+      productId: randomProduct.id,
+      variantId: randomProduct.variants.nodes[0].id,
+      sku: randomProduct.variants.nodes[0].sku,
+      vendor: randomProduct?.vendor,
+      quantity: randomQuantity,
+      priceSet: {
+        shopMoney: { amount: "119.24", currencyCode: "EUR" },
+      },
+    };
+  });
+  // console.log("lineItems: ", lineItems);
+
   // Create a delay function that returns a promise
   const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -87,28 +102,7 @@ const generateRandomOrders = async (admin, customerData, productsData) => {
         variables: {
           order: {
             currency: "EUR",
-            lineItems: [
-              {
-                productId: randomProduct.id,
-                variantId: randomProduct.variants.nodes[0].id,
-                sku: randomProduct.variants.nodes[0].sku,
-                vendor: randomProduct?.vendor,
-                quantity: randomQuantity,
-                priceSet: {
-                  shopMoney: { amount: "119.24", currencyCode: "EUR" },
-                },
-              },
-              {
-                productId: randomProducts.id,
-                variantId: randomProducts.variants.nodes[0].id,
-                sku: randomProducts.variants.nodes[0].sku,
-                vendor: randomProducts?.vendor,
-                quantity: randomQuantity,
-                priceSet: {
-                  shopMoney: { amount: "119.24", currencyCode: "EUR" },
-                },
-              },
-            ],
+            lineItems: lineItems,
             customer: { toAssociate: { id: randomCustomer.id } },
             financialStatus: "PAID",
             transactions: [
@@ -139,7 +133,7 @@ const generateRandomOrders = async (admin, customerData, productsData) => {
       await delay(60000); // Wait 1 minutes before retrying
       return generateRandomOrders(admin, customerData, productsData); // Retry
     }
-    console.error("Order creation error:", error);
+    console.error("Order creation error:", error.message);
     return error;
   }
 };

@@ -31,7 +31,7 @@ export const loader = async ({ request }) => {
     const customerQuery = `query { customers(first: 20) { nodes { id } } }`;
     const productsQuery = `
       query {
-        products(first: 50, query: "3/4") {
+        products(first: 50) {
           nodes {
             id
             title
@@ -68,7 +68,7 @@ const generateOrderPayload = (customerData, productsData) => {
   const randomQuantity2 = randomIndex(10) + 1;
 
   return {
-    currency: "EUR",
+    currency: "USD",
     lineItems: [
       {
         productId: randomProduct1.id,
